@@ -1,9 +1,16 @@
 import { auth } from "@/auth";
 
+// Local-dev bypass: when no Google OAuth credentials are configured there is
+// no way to sign in at all, so the gate would lock every page behind a login
+// that cannot succeed. Treat that as "no auth configured" and allow through.
+const authConfigured =
+  Boolean(process.env.AUTH_GOOGLE_ID) && Boolean(process.env.AUTH_GOOGLE_SECRET);
+
 // Gate every page + non-auth API route. `auth` from NextAuth v5 wraps a
 // handler that injects req.auth; here we use it directly as middleware, which
 // makes unauthenticated requests redirect to the configured sign-in page.
 export default auth((req) => {
+  if (!authConfigured) return;
   if (req.auth) return;
 
   // For API routes, return JSON 401 instead of an HTML redirect so the

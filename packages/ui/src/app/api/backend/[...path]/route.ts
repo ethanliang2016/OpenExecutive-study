@@ -18,8 +18,12 @@ const BACKEND_SHARED_SECRET = process.env.BACKEND_SHARED_SECRET ?? "";
 async function proxy(req: NextRequest, params: { path: string[] }): Promise<Response> {
   // Belt-and-suspenders: middleware should have already rejected unauthenticated
   // traffic, but check here too so a stray client can't reach the backend.
+  // Local-dev bypass mirrors middleware.ts: with no Google OAuth credentials
+  // configured, sign-in is impossible and the check would 401 every request.
+  const authConfigured =
+    Boolean(process.env.AUTH_GOOGLE_ID) && Boolean(process.env.AUTH_GOOGLE_SECRET);
   const session = await auth();
-  if (!session?.user) {
+  if (authConfigured && !session?.user) {
     return new Response(JSON.stringify({ error: "unauthorized" }), {
       status: 401,
       headers: { "content-type": "application/json" },
@@ -66,7 +70,7 @@ async function proxy(req: NextRequest, params: { path: string[] }): Promise<Resp
   // filtering on /audit, /today, etc.). Source: the verified NextAuth
   // session — clients have no way to set this themselves (stripped
   // above).
-  const callerEmail = session.user.email?.toLowerCase();
+  const callerEmail = session?.user?.email?.toLowerCase();
   if (callerEmail) {
     headers.set("x-caller-email", callerEmail);
   }
